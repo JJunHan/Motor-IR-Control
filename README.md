@@ -5,5 +5,5 @@ Includes DualVNH5019MotorShield, EnableInterrupt, PID, RunningMedian, SharpIR li
 
 Motor: 47:1 Metal Gearmotor 25Dx64L mm LP 6V with 48 CPR Encoder (No End Cap) from Pololu
 
-IR sensors: Sharp IR sensor model, GP2Y0A21YK, GP2Y0A2YK
+IR sensors: Sharp IR sensor model, GP2Y0A21YK, GP2Y0A2YK (long range)
 
