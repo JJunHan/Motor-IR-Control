@@ -1,13 +1,14 @@
 #include "SharpIR.h"
 #include <RunningMedian.h>
-constexpr int SIZE = 50;
+constexpr int SIZE = 75;
 RunningMedian samples = RunningMedian(SIZE);
 
 float SharpIR::getDistance( bool avoidBurstRead )
 	{
 		float distance ;
-		int raw_data;
-		if( !avoidBurstRead ) while( millis() <= lastTime + 20 ) {} //wait for sensor's sampling time
+		int raw_data = 0;
+    samples.clear();
+		if( !avoidBurstRead ) while( millis() <= lastTime + 30 ) {} //wait for sensor's sampling time
 
 		lastTime = millis();
 
@@ -34,8 +35,11 @@ float SharpIR::getDistance( bool avoidBurstRead )
 				switch (pin) //A0-A4 total 5 sensors used
 				{
         
-				case A0: //Right side front sensor
-        
+				case A0: //Left side front sensor
+          distance = 8314.53/(raw_data+46.96) -12;
+          return distance;
+
+          /*
 					if (raw_data >= 490) {
 						distance = -0.0272 * raw_data + 18.445;
 					}
@@ -61,10 +65,13 @@ float SharpIR::getDistance( bool avoidBurstRead )
 						distance = -0.5685 * raw_data + 99.003;
 					}
 					return distance;
-          
+          */
 					break;
 
-				case A1: //Left side front sensor
+				case A1: //middle front sensor
+          distance = 7992.86/(raw_data+29.78) -12;
+          return distance;
+        /*
 					if (raw_data >= 489) {
 						distance = -0.0271 * raw_data + 18.356;
 					}
@@ -90,10 +97,13 @@ float SharpIR::getDistance( bool avoidBurstRead )
 						distance = -1.1427 * raw_data + 134.8;
 					}
 					return distance;
-
+*/
 					break;
 
 				case A2: //Left side left front sensor
+          distance = 7709.23/(raw_data+27.52) -11;
+          return distance;
+       /*
 					if (raw_data >= 505) {
 						distance = -0.0297 * raw_data + 20.188;
 					}
@@ -122,10 +132,14 @@ float SharpIR::getDistance( bool avoidBurstRead )
 						distance = -0.7138 * raw_data + 123.96;
 					}
 					return distance;
-
+*/
 					break;
 
 				case A3: //Left side left back sensor
+        
+          distance = 7639.05/(raw_data+27.9) -11;
+          return distance;
+					/*
 					if (raw_data >= 491) {
 						distance = -0.0259 * raw_data + 17.882;
 					}
@@ -154,10 +168,14 @@ float SharpIR::getDistance( bool avoidBurstRead )
 						distance = -0.8544 * raw_data + 130.16;
 					}
 					return distance;
-
+*/
 					break;
 				
-				case A4: //Right side right front senor
+				case A4: //Right side front sensor
+          distance = 8329.85/(raw_data+48.73) -12;
+          return distance;
+
+       /*
 					if (raw_data >= 485) {
 						distance = -0.0262 * raw_data + 17.771;
 					}
@@ -186,19 +204,23 @@ float SharpIR::getDistance( bool avoidBurstRead )
 						distance = -0.5791 * raw_data + 102.2;
 					}
 					return distance;
-
+*/
 					break;
 
 				}
 
 
-			case GP2Y0A02YK0F : //used as long range
+			case GP2Y0A02YK0F : //used as long range A5
         samples.clear();
         for (int i = 0; i < SIZE; i++) {
           samples.add(analogRead(pin));
         }
         raw_data = samples.getMedian();
+        distance = 11645.57/(raw_data+8.08) -15;
+        return distance;
+        break;
         
+        /*
         if (raw_data >= 465) {
           distance = -0.0921 * raw_data + 52.639;
         }
@@ -226,6 +248,6 @@ float SharpIR::getDistance( bool avoidBurstRead )
         else {
           distance = -2.1677 * raw_data + 390.74;
         }
-        return distance;
+        */
 		}
 	}
