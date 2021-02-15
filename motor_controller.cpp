@@ -4,22 +4,28 @@
 #include "motor_controller.h"
 #include "SharpIR.h"
 
-SharpIR sensorFR(SharpIR::GP2Y0A21YK0F, A0); //Right side front sensor
-SharpIR sensorFL(SharpIR::GP2Y0A21YK0F, A1); //Left side front sensor
+//IR Sensor 
+SharpIR sensorFR(SharpIR::GP2Y0A21YK0F, A4); //Right side front sensor
+SharpIR sensorFL(SharpIR::GP2Y0A21YK0F, A0); //Left side front sensor
 SharpIR sensorLF(SharpIR::GP2Y0A21YK0F, A2); //Left side left front sensor
 SharpIR sensorLB(SharpIR::GP2Y0A21YK0F, A3); //Left side left back sensor
-SharpIR sensorMF(SharpIR::GP2Y0A21YK0F, A4); //middle front sensor
+SharpIR sensorMF(SharpIR::GP2Y0A21YK0F, A1); //middle front sensor
 SharpIR sensorRF(SharpIR::GP2Y0A02YK0F, A5 ); //right side front sensor
-
 float LF_D = 0.0;
 float LB_D = 0.0;
+float FR_D = 0.0;
+float FL_D = 0.0;
+float MF_D = 0.0;
 float difference = 0.0;
+
 constexpr int RIGHT_PULSE_PORT = 3; //input port A
 constexpr int LEFT_PULSE_PORT = 11; //input port A
 constexpr int normalSpeed = 300; //base speed
 constexpr int slowSpeed = 200;
-const int rotation_ticks[] = {48,109,177,244,319,385,451,526,602,670,743,818,1607}; //15,30,45,60,75,90,105,120,135,150,165,180,360
+const int rotation_ticks[] = {48,109,177,244,319,385,454,528,602,676,745,820,1607,3284,4891}; //15,30,45,60,75,90,105,120,135,150,165,180,360,720,1080
+const int distance_customp[] = {298,596}; //10cm,20cm
 DualVNH5019MotorShield md;
+
 //Motors
 
 void startMotor() {
@@ -45,14 +51,14 @@ unsigned long time_last2 = 0;
 
 void left_tick_counter() { //called upon rising edge
 	leftTick++; 
-	time1 = (micros() - time_last1);
-	time_last1 = micros();
+	//time1 = (micros() - time_last1);
+	//time_last1 = micros();
 }
 
 void right_tick_counter() { 
 	rightTick++; 
-	time2 = (micros() - time_last2);
-	time_last2 = micros();
+	//time2 = (micros() - time_last2);
+	//time_last2 = micros();
 }
 
 void reset_ticks() {
@@ -79,8 +85,7 @@ void shutdown_motor() {
 
 //PID
 
-double aggKp= 0.5, aggKi= 0.025, aggKd= 0.005;
-double consKp= 2.1, consKi= 0.025, consKd= 0.05; //1.9,0.025 , 0.01
+double consKp= 0.71, consKi= 0.05, consKd= 0.00; //1.9,0.025 , 0.01 //2.5 0.05/ 0.055
 double Setpoint;
 double Input;
 double PID_Output;
@@ -91,66 +96,136 @@ PID myPID(&Input, &PID_Output, &Setpoint, consKp, consKi, consKd, DIRECT);
 void on_PID() {
   myPID.SetMode(AUTOMATIC); //initialise
   myPID.SetOutputLimits(-120,120); //M1 is right, M2 is left
-  myPID.SetSampleTime(10); //0.01 seconds
+  myPID.SetSampleTime(5); //0.01 seconds
+}
+void move_ramp(){ //10cm move
+  
 }
 
+void avoid_obs(){ //alrd know that theres an obs ard 20 cm ahead
+  if(get_RF() > 30) { //turn right cos got space to the right
+    rotate_right_left(5,true,true); //90 right
+    delay(1000);
+    if(get_FR() > 30 && get_FL() > 30 && get_MF() > 30) {
+      move_front_back(20,true,true); //15cm forward
+      delay(500);
+      rotate_right_left(5,false,true); //90 left
+      delay(500);
+      move_front_back(45,true,true); //20cm forward
+      delay(500);
+      rotate_right_left(5,false,true); //90 left
+      delay(500);
+      move_front_back(20,true,true); //15cm forward
+      delay(500);
+      rotate_right_left(5,true,true); //90 right
+      delay(500);
+    }
+  }
+  else if(get_LF() > 30){ //left got space
+    rotate_right_left(5,false,true); //90 left
+    delay(1000);
+    if(get_FR() > 30 && get_FL() > 30 && get_MF() > 30) {
+      move_front_back(20,true,true); //10cm forward
+      delay(500);
+      rotate_right_left(5,true,true); //90 right
+      delay(500);
+      move_front_back(45,true,true); //20cm forward
+      delay(500);
+      rotate_right_left(5,true,true); //90 right
+      delay(500);
+      move_front_back(20,true,true); //15cm forward
+      delay(500);
+      rotate_right_left(5,false,true); //90 left
+      delay(500);
+  }
+ }
+    
+}
+
+void avoid_obs45(){
+    if(get_RF() > 30) { //turn right cos got space to the right
+    rotate_right_left(2,true,true); //45 right
+    delay(1000);
+    if(get_FR() > 30 && get_FL() > 30 && get_MF() > 30) {
+      move_front_back(35,true,true); 
+      delay(500);
+      rotate_right_left(5,false,true); //90 left
+      delay(500);
+      move_front_back(39,true,true); 
+      delay(500);
+      rotate_right_left(2,true,true); //45 right
+      delay(500);
+    }
+  }
+  else if(get_LF() > 30){ //left got space
+    rotate_right_left(2,false,true); //45 left
+    delay(1000);
+    if(get_FR() > 30 && get_FL() > 30 && get_MF() > 30) {
+      move_front_back(35,true,true); 
+      delay(500);
+      rotate_right_left(5,true,true); //90 right
+      delay(500);
+      move_front_back(39,true,true); 
+      delay(500);
+      rotate_right_left(2,false,true); //45 left
+      delay(500);
+  }
+ }
+}
+
+
+
 void move_front_back(int cm,bool front_back, bool fast_slow) { //1124.5 sq waves per revolution of 6cm (high and low), so 562.25 per revolution of 6cm if using interupts
+	int totaltick = 0;
+  int right_tick = 0;
+  int left_tick = 0;
+  bool flagt = true;
 	reset_ticks(); //reset both pulse inputs from encoders
 	startMotor(); //set to cruise
 	int total_ticks = convert_cm_to_ticks(cm);
 	int chosen_speed = fast_slow ? normalSpeed : slowSpeed;
   PID_Output = 0;
 	while (rightTick <= total_ticks || leftTick <= total_ticks) { //keep adjusting the speed until reach number of total ticks for both.
+		if((get_FR() <16 || get_FL() <16 || get_MF() <16)&&(flagt)){
+      totaltick = total_ticks;
+      total_ticks = 0;
+      right_tick = rightTick;
+      left_tick = leftTick;
+      flagt = false;
+      avoid_obs();
+      //flagt = true;
+      rightTick = right_tick;
+      leftTick = left_tick;
+      total_ticks = totaltick;
+      //break;
+      }
+		Input = rightTick;
+    Setpoint = leftTick;
+		myPID.Compute(); 
 		if (front_back) {
-      md.setSpeeds( chosen_speed + PID_Output,  -(chosen_speed - PID_Output) ); 
+      md.setSpeeds( chosen_speed + PID_Output,  -(chosen_speed - PID_Output)); 
     }
     else {
       md.setSpeeds(-(chosen_speed + PID_Output),  chosen_speed - PID_Output); 
     }
-		RPML = calc_rpm(time1); //use interrupt to calculate period to calc rpm
-		RPMR = calc_rpm(time2);
-    Input = RPMR; //raw rpm in
-    Setpoint = RPML;
-		double gap = abs(Setpoint-Input);
-		if (gap > 30) {//if the difference of the 2 motor is very far, use aggresive method to push
-			myPID.SetTunings(aggKp, aggKi, aggKd);
-      //Serial.print("test: ");
-		}
-		else {
-			myPID.SetTunings(consKp, consKi, consKd);
-		}
-
-		myPID.Compute(); //output is the RPM for right motor
-		//Serial.print("PID: ");
 		//Serial.println(PID_Output);
 	}
 
-	stopMotor(); //completed movement forward.
+	stopMotor(); 
 	delay(10);
 }
 
 void rotate_right_left(int degree_position, bool right_left ,bool fast_slow) { //position array by difference of 15 degrees. 0-11, 11 is 180, 5 is 90.
-	reset_ticks(); //reset both pulse inputs from encoders
-	startMotor(); //set to cruise
+	reset_ticks();
+	startMotor();
 	int total_ticks = rotation_ticks[degree_position];
 	int chosen_speed = fast_slow ? normalSpeed : slowSpeed;
   PID_Output = 0;
 	while (rightTick <= total_ticks || leftTick <= total_ticks) { 
-		md.setSpeeds( right_left ? -(chosen_speed + PID_Output):(chosen_speed - PID_Output), right_left ? -(chosen_speed + PID_Output):(chosen_speed - PID_Output)); 
-		RPML = calc_rpm(time1);
-		RPMR = calc_rpm(time2);
-    Input = RPMR;
-    Setpoint = RPML;
-		double gap = abs(Setpoint - Input);
-		if (gap > 30) {
-			myPID.SetTunings(aggKp, aggKi, aggKd);
-		}
-		else {
-			myPID.SetTunings(consKp, consKi, consKd);
-		}
+		Input = rightTick;
+    Setpoint = leftTick;
 		myPID.Compute(); 
-    //md.setSpeeds( right_left ? -(chosen_speed + PID_Output):(chosen_speed - PID_Output), right_left ? -(chosen_speed + PID_Output):(chosen_speed - PID_Output)); 
-		//Serial.print("RPM: ");
+		md.setSpeeds( right_left ? -(chosen_speed + PID_Output):(chosen_speed - PID_Output), right_left ? -(chosen_speed + PID_Output):(chosen_speed - PID_Output)); 
 		//Serial.println(PID_Output);
 	}
 
@@ -161,37 +236,20 @@ void rotate_right_left(int degree_position, bool right_left ,bool fast_slow) { /
 void cali_left() {
   reset_ticks(); 
   startMotor();
-  //md.setSpeeds(100, -100);
-  //delay(10);
   PID_Output = 0;
   LF_D = sensorLF.getDistance();
   LB_D = sensorLB.getDistance();
   
   difference = abs(LF_D - LB_D);
-  while (difference >= 0.5) { //while it is greater than 1.0 cm difference, keep calibrating to match.
-    RPML = calc_rpm(time1);
-    RPMR = calc_rpm(time2);
-    Input = RPMR;
-    Setpoint = RPML;
-    double gap = abs(Setpoint - Input);
-    if (gap > 30) {//if the difference of the 2 motor is very far, use aggresive method to push
-      myPID.SetTunings(aggKp, aggKi, aggKd);
-    }
-    else {
-      myPID.SetTunings(consKp, consKi, consKd);
-    }
-
-
+  while (difference >= 0.5) { //while it is greater than 0.5 cm difference, keep calibrating to match.
+    Input = rightTick;
+    Setpoint = leftTick;
+    myPID.Compute();
     if (LF_D > LB_D) {//if left front is greater, means it is tilted right. right motor have to move left abit.
       md.setSpeeds((100 + PID_Output), 100 - PID_Output);
-      myPID.Compute();
-      //Serial.println(LF_D);
-      //Serial.println(LB_D);
     }
-
     else { //back sensor is greater, means it is tilted left, left motor have to move right.
       md.setSpeeds(-(100 + PID_Output), -(100 - PID_Output));
-      myPID.Compute();
     }
     //refresh data
     LF_D = sensorLF.getDistance();
@@ -200,54 +258,95 @@ void cali_left() {
   }
   stopMotor();
   delay(10);
-
 }
 
-void start_cali() {
+void cali_front() {
   reset_ticks(); 
   startMotor();
   PID_Output = 0;
-  int total_ticks = rotation_ticks[5];
-  md.setSpeeds(-slowSpeed, -slowSpeed); //turn right
-  delay(20); //start the interupts
-  while (rightTick <= total_ticks || leftTick <= total_ticks) { //keep adjusting the speed until reach number of total ticks for both.
-    md.setSpeeds(-(slowSpeed + PID_Output), -(slowSpeed + PID_Output)); 
-    RPML = calc_rpm(time1);
-    RPMR = calc_rpm(time2);
-    Input = RPMR;
-    Setpoint = RPML;
-    double gap = abs(Setpoint - Input);
-    if (gap > 30) {
-      myPID.SetTunings(aggKp, aggKi, aggKd);
+  FR_D = sensorFR.getDistance();
+  FL_D = sensorFL.getDistance();
+  //MF_D = sensorMF.getDistance();
+  
+  difference = abs(FR_D - FL_D);
+  while (difference >= 0.5) { 
+    Input = rightTick;
+    Setpoint = leftTick;
+    myPID.Compute(); 
+    if (FR_D > FL_D) { 
+      md.setSpeeds((100 + PID_Output), 100 - PID_Output); //turn right
     }
-    else {
-      myPID.SetTunings(consKp, consKi, consKd);
+
+    else { 
+      md.setSpeeds(-(100 + PID_Output), -(100 - PID_Output)); //turn left
     }
-    myPID.Compute();
+    //refresh data
+    FR_D = sensorFR.getDistance();
+    FL_D = sensorFL.getDistance();
+    difference = abs(FR_D - FL_D);
   }
-  rotate_right_left(5, false, false); //90, rotate left, slow speed.
-  cali_left();
   stopMotor();
   delay(10);
 }
 
-float get_FR(){
-  return sensorFR.getDistance();
+void start_cali() { //send IR readings at 0 and 180 facing. then turn back to 180
+  reset_ticks(); 
+  startMotor();
+  PID_Output = 0;
+  cali_left(); //straighten first
+  delay(10);
+  get_all_IR(); //read obstacle from starting phase
+  delay(10);
+  rotate_right_left(11, true, true); //180, rotate right, fast speed
+  delay(100);
+  get_all_IR(); //read obstacle from starting phase
+  delay(10);
+  rotate_right_left(11, true, true); //180, rotate right, fast speed
+  //stopMotor();
+  delay(10);
 }
-float get_FL(){
-  return sensorFL.getDistance();
+
+int get_FR(){
+  return round(sensorFR.getDistance());
 }
-float get_MF(){
-  return sensorLF.getDistance();
+int get_FL(){
+  return round(sensorFL.getDistance());
 }
-float get_LF(){
-  return sensorLB.getDistance();
+int get_LF(){
+  return round(sensorLF.getDistance());
 }
-float get_LB(){
-  return sensorMF.getDistance();
+int get_LB(){
+  return round(sensorLB.getDistance());
 }
-float get_RF(){
-  return sensorRF.getDistance();
+int get_MF(){
+  return round(sensorMF.getDistance());
+}
+int get_RF(){
+  return round(sensorRF.getDistance());
+}
+
+void get_all_IR(){
+  Serial.print("FR:");
+  Serial.print(get_FR());
+
+  Serial.print(":MF:");
+  Serial.print(get_MF());
+  
+  Serial.print(":FL:");
+  Serial.print(get_FL()); 
+  
+  Serial.print(":LF:");  
+  Serial.print(get_LF());
+
+  Serial.print(":LB:");
+  Serial.print(get_LB());
+
+  Serial.print(":RF:");  
+  Serial.print(get_RF());
+  Serial.println("#");
+
+  Serial.flush();
+  delay(10);
 }
 
 int convert_degree_to_ticks(int degree) {
