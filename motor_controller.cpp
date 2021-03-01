@@ -20,9 +20,9 @@ float difference = 0.0;
 
 constexpr int RIGHT_PULSE_PORT = 3; //input port A
 constexpr int LEFT_PULSE_PORT = 11; //input port A
-constexpr int normalSpeed = 300; //base speed
-constexpr int slowSpeed = 200;
-const int rotation_ticks[] = {48,109,177,244,319,385,454,528,602,676,745,820,1607,3284,4891}; //15,30,45,60,75,90,105,120,135,150,165,180,360,720,1080
+constexpr int normalSpeed = 380; //base speed
+constexpr int slowSpeed = 300; //385
+const int rotation_ticks[] = {48,109,177,244,319,380,454,528,602,676,745,820,1607,3284,4891}; //15,30,45,60,75,90,105,120,135,150,165,180,360,720,1080
 const int distance_customp[] = {298,596}; //10cm,20cm
 DualVNH5019MotorShield md;
 
@@ -85,7 +85,7 @@ void shutdown_motor() {
 
 //PID
 
-double consKp= 0.71, consKi= 0.05, consKd= 0.00; //1.9,0.025 , 0.01 //2.5 0.05/ 0.055
+double consKp= 1.71, consKi= 0.05, consKd= 0.00; //1.9,0.025 , 0.01 //2.5 0.05/ 0.055
 double Setpoint;
 double Input;
 double PID_Output;
@@ -102,83 +102,8 @@ void move_ramp(){ //10cm move
   
 }
 
-void avoid_obs(){ //alrd know that theres an obs ard 20 cm ahead
-  if(get_RF() > 30) { //turn right cos got space to the right
-    rotate_right_left(5,true,true); //90 right
-    delay(1000);
-    if(get_FR() > 30 && get_FL() > 30 && get_MF() > 30) {
-      move_front_back(20,true,true); //15cm forward
-      delay(500);
-      rotate_right_left(5,false,true); //90 left
-      delay(500);
-      move_front_back(45,true,true); //20cm forward
-      delay(500);
-      rotate_right_left(5,false,true); //90 left
-      delay(500);
-      move_front_back(20,true,true); //15cm forward
-      delay(500);
-      rotate_right_left(5,true,true); //90 right
-      delay(500);
-    }
-  }
-  else if(get_LF() > 30){ //left got space
-    rotate_right_left(5,false,true); //90 left
-    delay(1000);
-    if(get_FR() > 30 && get_FL() > 30 && get_MF() > 30) {
-      move_front_back(20,true,true); //10cm forward
-      delay(500);
-      rotate_right_left(5,true,true); //90 right
-      delay(500);
-      move_front_back(45,true,true); //20cm forward
-      delay(500);
-      rotate_right_left(5,true,true); //90 right
-      delay(500);
-      move_front_back(20,true,true); //15cm forward
-      delay(500);
-      rotate_right_left(5,false,true); //90 left
-      delay(500);
-  }
- }
-    
-}
-
-void avoid_obs45(){
-    if(get_RF() > 30) { //turn right cos got space to the right
-    rotate_right_left(2,true,true); //45 right
-    delay(1000);
-    if(get_FR() > 30 && get_FL() > 30 && get_MF() > 30) {
-      move_front_back(35,true,true); 
-      delay(500);
-      rotate_right_left(5,false,true); //90 left
-      delay(500);
-      move_front_back(39,true,true); 
-      delay(500);
-      rotate_right_left(2,true,true); //45 right
-      delay(500);
-    }
-  }
-  else if(get_LF() > 30){ //left got space
-    rotate_right_left(2,false,true); //45 left
-    delay(1000);
-    if(get_FR() > 30 && get_FL() > 30 && get_MF() > 30) {
-      move_front_back(35,true,true); 
-      delay(500);
-      rotate_right_left(5,true,true); //90 right
-      delay(500);
-      move_front_back(39,true,true); 
-      delay(500);
-      rotate_right_left(2,false,true); //45 left
-      delay(500);
-  }
- }
-}
-
-
 
 void move_front_back(int cm,bool front_back, bool fast_slow) { //1124.5 sq waves per revolution of 6cm (high and low), so 562.25 per revolution of 6cm if using interupts
-	int totaltick = 0;
-  int right_tick = 0;
-  int left_tick = 0;
   bool flagt = true;
 	reset_ticks(); //reset both pulse inputs from encoders
 	startMotor(); //set to cruise
@@ -186,19 +111,6 @@ void move_front_back(int cm,bool front_back, bool fast_slow) { //1124.5 sq waves
 	int chosen_speed = fast_slow ? normalSpeed : slowSpeed;
   PID_Output = 0;
 	while (rightTick <= total_ticks || leftTick <= total_ticks) { //keep adjusting the speed until reach number of total ticks for both.
-		if((get_FR() <16 || get_FL() <16 || get_MF() <16)&&(flagt)){
-      totaltick = total_ticks;
-      total_ticks = 0;
-      right_tick = rightTick;
-      left_tick = leftTick;
-      flagt = false;
-      avoid_obs();
-      //flagt = true;
-      rightTick = right_tick;
-      leftTick = left_tick;
-      total_ticks = totaltick;
-      //break;
-      }
 		Input = rightTick;
     Setpoint = leftTick;
 		myPID.Compute(); 
@@ -210,7 +122,6 @@ void move_front_back(int cm,bool front_back, bool fast_slow) { //1124.5 sq waves
     }
 		//Serial.println(PID_Output);
 	}
-
 	stopMotor(); 
 	delay(10);
 }
@@ -298,7 +209,7 @@ void start_cali() { //send IR readings at 0 and 180 facing. then turn back to 18
   get_all_IR(); //read obstacle from starting phase
   delay(10);
   rotate_right_left(11, true, true); //180, rotate right, fast speed
-  delay(100);
+  delay(300);
   get_all_IR(); //read obstacle from starting phase
   delay(10);
   rotate_right_left(11, true, true); //180, rotate right, fast speed
@@ -326,6 +237,7 @@ int get_RF(){
 }
 
 void get_all_IR(){
+  /*
   Serial.print("FR:");
   Serial.print(get_FR());
 
@@ -344,7 +256,27 @@ void get_all_IR(){
   Serial.print(":RF:");  
   Serial.print(get_RF());
   Serial.println("#");
+*/
 
+  Serial.print("sensor,(");
+  Serial.print(get_FR());
+
+  Serial.print(": ");
+  Serial.print(get_MF());
+  
+  Serial.print(": ");
+  Serial.print(get_FL()); 
+  
+  Serial.print(": ");  
+  Serial.print(get_LF());
+
+  Serial.print(": ");
+  Serial.print(get_LB());
+
+  Serial.print(": ");  
+  Serial.print(get_RF());
+  Serial.println(")#");
+  
   Serial.flush();
   delay(10);
 }
@@ -362,7 +294,7 @@ int convert_cm_to_ticks(int cm) {
   //Distance traveled = (ticks ÷ (CPR × gear ratio)) × circumference of wheel //CPR in this case is 48.
   //562.25/(6*pi) = 29.828
   //double singleCM = 28.5;
-  double singleCM = 29.8; 
+  double singleCM = 29.7; 
   return cm * singleCM;
 }
 
