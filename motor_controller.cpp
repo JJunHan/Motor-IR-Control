@@ -20,7 +20,7 @@ float difference = 0.0;
 
 constexpr int RIGHT_PULSE_PORT = 3; //input port A
 constexpr int LEFT_PULSE_PORT = 11; //input port A
-constexpr int normalSpeed = 380; //base speed
+constexpr int normalSpeed = 300; //base speed
 constexpr int slowSpeed = 300; //385
 const int rotation_ticks[] = {48,109,177,244,319,380,454,528,602,676,745,820,1607,3284,4891}; //15,30,45,60,75,90,105,120,135,150,165,180,360,720,1080
 const int distance_customp[] = {298,596}; //10cm,20cm
@@ -177,24 +177,62 @@ void cali_front() {
   PID_Output = 0;
   FR_D = sensorFR.getDistance();
   FL_D = sensorFL.getDistance();
-  //MF_D = sensorMF.getDistance();
-  
+  MF_D = sensorMF.getDistance();
+  float sensor1 = 0;
+  float sensor2 = 0;
+  int LorR = 0;
   difference = abs(FR_D - FL_D);
+  sensor1 = FR_D;
+  sensor2 = FL_D;
+  
+  if(difference >= 8) {//no object on either side
+    difference = abs(FL_D - MF_D);
+    if(difference <=8) { //left side got no object but middle has
+      LorR = 1;
+      sensor1 = MF_D;
+      sensor2 = FL_D;
+    }
+    else{ //right side got no object but middle has
+      difference = abs(FR_D - MF_D);
+      LorR = 2;
+      sensor1 = MF_D;
+      sensor2 = FR_D;
+    }
+  }
+
+  
   while (difference >= 0.5) { 
     Input = rightTick;
     Setpoint = leftTick;
     myPID.Compute(); 
-    if (FR_D > FL_D) { 
-      md.setSpeeds((100 + PID_Output), 100 - PID_Output); //turn right
+    if (sensor1 > sensor2) { 
+      md.setSpeeds((100 + PID_Output), 100 - PID_Output); //turn left
     }
 
     else { 
-      md.setSpeeds(-(100 + PID_Output), -(100 - PID_Output)); //turn left
+      md.setSpeeds(-(100 + PID_Output), -(100 - PID_Output)); //turn right
     }
     //refresh data
     FR_D = sensorFR.getDistance();
     FL_D = sensorFL.getDistance();
-    difference = abs(FR_D - FL_D);
+    MF_D = sensorMF.getDistance();
+    //Serial.println(LorR);
+    switch(LorR){
+      case 0: 
+        sensor1 = FR_D;
+        sensor2 = FL_D;
+        break;
+      case 1:
+        sensor1 = MF_D;
+        sensor2 = FL_D;
+        break;
+      case 2:
+        sensor1 = MF_D;
+        sensor2 = FR_D;
+        break;
+      }
+      difference = abs(sensor1 - sensor2);
+    
   }
   stopMotor();
   delay(10);
@@ -206,14 +244,16 @@ void start_cali() { //send IR readings at 0 and 180 facing. then turn back to 18
   PID_Output = 0;
   cali_left(); //straighten first
   delay(10);
-  get_all_IR(); //read obstacle from starting phase
-  delay(10);
+  //get_all_IR(); //read obstacle from starting phase
+  //delay(10);
   rotate_right_left(11, true, true); //180, rotate right, fast speed
-  delay(300);
+  delay(50);
   get_all_IR(); //read obstacle from starting phase
   delay(10);
   rotate_right_left(11, true, true); //180, rotate right, fast speed
   //stopMotor();
+  delay(50);
+  get_all_IR(); //read obstacle from starting phase
   delay(10);
 }
 
@@ -258,7 +298,7 @@ void get_all_IR(){
   Serial.println("#");
 */
 
-  Serial.print("sensor,(");
+  Serial.print("ALG|sensor,(");
   Serial.print(get_FR());
 
   Serial.print(": ");
@@ -291,7 +331,7 @@ int convert_degree_to_ticks(int degree) {
 }
 
 int convert_cm_to_ticks(int cm) {
-  //Distance traveled = (ticks ÷ (CPR × gear ratio)) × circumference of wheel //CPR in this case is 48.
+  //Distance traveled = (ticks ÷ (CPR × gear ratio)) × circumference of wheel //CPR in this case is 48. diameter 6cm
   //562.25/(6*pi) = 29.828
   //double singleCM = 28.5;
   double singleCM = 29.7; 
@@ -319,5 +359,6 @@ int convert_to_speed(double rpm, bool R_or_L) {
 }
 
 double calc_rpm(unsigned long period){
-  return (((60.0 / ((double)period/1000000.0))) / 562.25);
+  //return (((60.0 / ((double)period/1000000.0))) / 562.25);
+  return (60000.0/(1.1245*(double)period));
 }
