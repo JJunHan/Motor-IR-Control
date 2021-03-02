@@ -54,33 +54,42 @@ void loop() {
   else if(strcmp(tokenizer,"A")== 0){
     tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
     cali_left(); //calibrate left
+    delay(50);
+    get_all_IR(); 
   }
 
   else if(strcmp(tokenizer,"FRONTCALIBRATE")== 0){
     tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
     cali_front(); //calibrate front
+    delay(50);
+    get_all_IR(); 
   }
   
   else if(strcmp(tokenizer,"INITIALCALIBRATE")== 0){
     tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
     start_cali(); //start cali to send sensor readings
+    //delay(50);
+    //get_all_IR(); 
   }
 
   else if(strcmp(tokenizer,"SIDECALIBRATE")== 0){
     tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
     cali_left(); //calibrate left
+    delay(50);
+    get_all_IR(); 
   }
   
   else if(strcmp(tokenizer,"BFOk")== 0){
     tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
     speed = true; 
+    delay(50);
+    get_all_IR(); 
   }
   
   else if(strcmp(tokenizer,"BEOk")== 0){
     tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
     speed = false; 
     delay(50);
-    Serial.print("ALG|Map,");
     get_all_IR(); 
   }
   
