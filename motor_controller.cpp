@@ -20,9 +20,11 @@ float difference = 0.0;
 
 constexpr int RIGHT_PULSE_PORT = 3; //input port A
 constexpr int LEFT_PULSE_PORT = 11; //input port A
-constexpr int normalSpeed = 300; //base speed
-constexpr int slowSpeed = 300; //385
-const int rotation_ticks[] = {48,109,177,244,319,380,454,528,602,676,745,820,1607,3284,4891}; //15,30,45,60,75,90,105,120,135,150,165,180,360,720,1080
+constexpr int normalSpeed = 395; //base speed
+constexpr int slowSpeed = 340; //370, 368
+constexpr int extraslowSpeed = 200;
+const int rotation_ticks[] = {48,109,177,244,319,370,454,528,602,676,745,820,1607,3284,4891}; //15,30,45,60,75,90,105,120,135,150,165,180,360,720,1080
+const int rotation_ticksleft[] = {48,109,177,244,319,368,454,528,602,676,745,820,1607,3284,4891}; //15,30,45,60,75,90,105,120,135,150,165,180,360,720,1080
 const int distance_customp[] = {298,596}; //10cm,20cm
 DualVNH5019MotorShield md;
 
@@ -85,8 +87,8 @@ void shutdown_motor() {
 
 //PID
 
-double consKp= 1.71, consKi= 0.05, consKd= 0.00; //1.9,0.025 , 0.01 //2.5 0.05/ 0.055
-double Setpoint;
+double consKp= 0.71, consKi= 0.05, consKd= 0.00; //double consKp= 1.71, consKi= 0.05, consKd= 0.00;
+double Setpoint; //1.71
 double Input;
 double PID_Output;
 
@@ -110,15 +112,26 @@ void move_front_back(int cm,bool front_back, bool fast_slow) { //1124.5 sq waves
 	int total_ticks = convert_cm_to_ticks(cm);
 	int chosen_speed = fast_slow ? normalSpeed : slowSpeed;
   PID_Output = 0;
+  float counter = 0;
 	while (rightTick <= total_ticks || leftTick <= total_ticks) { //keep adjusting the speed until reach number of total ticks for both.
 		Input = rightTick;
     Setpoint = leftTick;
 		myPID.Compute(); 
 		if (front_back) {
-      md.setSpeeds( chosen_speed + PID_Output,  -(chosen_speed - PID_Output)); 
+      //md.setSpeeds( chosen_speed + PID_Output,  -(chosen_speed - PID_Output)); 
+      if((total_ticks - rightTick) < 200 || (total_ticks - leftTick) < 200) { //ending 
+         counter = counter + 2;
+         //Serial.println(chosen_speed-counter+PID_Output);
+         md.setSpeeds( chosen_speed -counter + PID_Output,  -(chosen_speed - counter)); //-PID_Output
+         //counter = counter + 3.5; 
+         delay(10);
+      }
+      else {
+        md.setSpeeds( chosen_speed + PID_Output,  -(chosen_speed)); //-PID_Output
+      }
     }
     else {
-      md.setSpeeds(-(chosen_speed + PID_Output),  chosen_speed - PID_Output); 
+        md.setSpeeds(-(chosen_speed + PID_Output),  chosen_speed - PID_Output); 
     }
 		//Serial.println(PID_Output);
 	}
@@ -129,7 +142,7 @@ void move_front_back(int cm,bool front_back, bool fast_slow) { //1124.5 sq waves
 void rotate_right_left(int degree_position, bool right_left ,bool fast_slow) { //position array by difference of 15 degrees. 0-11, 11 is 180, 5 is 90.
 	reset_ticks();
 	startMotor();
-	int total_ticks = rotation_ticks[degree_position];
+	int total_ticks = right_left ? rotation_ticks[degree_position] : rotation_ticksleft[degree_position];
 	int chosen_speed = fast_slow ? normalSpeed : slowSpeed;
   PID_Output = 0;
 	while (rightTick <= total_ticks || leftTick <= total_ticks) { 
@@ -152,7 +165,7 @@ void cali_left() {
   LB_D = sensorLB.getDistance();
   
   difference = abs(LF_D - LB_D);
-  while (difference >= 0.5) { //while it is greater than 0.5 cm difference, keep calibrating to match.
+  while (difference >= 0.2) { //while it is greater than 0.5 cm difference, keep calibrating to match.
     Input = rightTick;
     Setpoint = leftTick;
     myPID.Compute();
@@ -185,7 +198,7 @@ void cali_front() {
   sensor1 = FR_D;
   sensor2 = FL_D;
   
-  if(difference >= 8) {//no object on either side
+  if(difference >= 3) {//no object on either side
     difference = abs(FL_D - MF_D);
     if(difference <=8) { //left side got no object but middle has
       LorR = 1;
@@ -195,13 +208,13 @@ void cali_front() {
     else{ //right side got no object but middle has
       difference = abs(FR_D - MF_D);
       LorR = 2;
-      sensor1 = MF_D;
-      sensor2 = FR_D;
+      sensor1 = FR_D;
+      sensor2 = MF_D;
     }
   }
 
   
-  while (difference >= 0.5) { 
+  while (difference >= 0.1) { 
     Input = rightTick;
     Setpoint = leftTick;
     myPID.Compute(); 
@@ -227,8 +240,8 @@ void cali_front() {
         sensor2 = FL_D;
         break;
       case 2:
-        sensor1 = MF_D;
-        sensor2 = FR_D;
+        sensor1 = FR_D;
+        sensor2 = MF_D;
         break;
       }
       difference = abs(sensor1 - sensor2);
@@ -246,15 +259,47 @@ void start_cali() { //send IR readings at 0 and 180 facing. then turn back to 18
   delay(10);
   //get_all_IR(); //read obstacle from starting phase
   //delay(10);
-  rotate_right_left(11, true, true); //180, rotate right, fast speed
+  rotate_right_left(5, true, false); //180, rotate right, fast speed
   delay(50);
   get_all_IR(); //read obstacle from starting phase
   delay(10);
-  rotate_right_left(11, true, true); //180, rotate right, fast speed
+  rotate_right_left(5, false, false); //180, rotate left, fast speed
   //stopMotor();
   delay(50);
+  cali_left();
+  delay(50);
   get_all_IR(); //read obstacle from starting phase
   delay(10);
+}
+
+void left_hug() { //left hug
+  reset_ticks(); 
+  startMotor();
+  PID_Output = 0;
+  LF_D = sensorLF.getDistance();
+  LB_D = sensorLB.getDistance();
+  //difference = abs(LF_D - LB_D);
+
+  //while(LF_D >= 10 && LF_D <= 15 && LB_D >= 10 && LB_D <= 15) {
+  while(LF_D >= 5 && LF_D <= 15 && LB_D >= 5 && LB_D <= 15) {
+    rotate_right_left(5, false, false); //180, rotate left, fast speed
+    delay(50);
+    FR_D = sensorFR.getDistance();
+    FL_D = sensorFL.getDistance();
+    //MF_D = sensorMF.getDistance();
+
+    while(FR_D >= 3 && FL_D >= 3) {
+      md.setSpeeds( extraslowSpeed,  -extraslowSpeed); 
+      FR_D = sensorFR.getDistance();
+      FL_D = sensorFL.getDistance();
+    }
+
+    rotate_right_left(5, true, false); //180, rotate left, fast speed
+    delay(50);
+    FR_D = sensorFR.getDistance();
+    FL_D = sensorFL.getDistance();
+    cali_left();
+  }
 }
 
 int get_FR(){
@@ -264,10 +309,12 @@ int get_FL(){
   return round(sensorFL.getDistance());
 }
 int get_LF(){
-  return round(sensorLF.getDistance());
+  //return round(sensorLF.getDistance());
+  return sensorLF.getDistance();
 }
 int get_LB(){
-  return round(sensorLB.getDistance());
+  //return round(sensorLB.getDistance());
+  return sensorLB.getDistance();
 }
 int get_MF(){
   return round(sensorMF.getDistance());
@@ -277,26 +324,6 @@ int get_RF(){
 }
 
 void get_all_IR(){
-  /*
-  Serial.print("FR:");
-  Serial.print(get_FR());
-
-  Serial.print(":MF:");
-  Serial.print(get_MF());
-  
-  Serial.print(":FL:");
-  Serial.print(get_FL()); 
-  
-  Serial.print(":LF:");  
-  Serial.print(get_LF());
-
-  Serial.print(":LB:");
-  Serial.print(get_LB());
-
-  Serial.print(":RF:");  
-  Serial.print(get_RF());
-  Serial.println("#");
-*/
 
   Serial.print("ALG|sensor,(");
   Serial.print(get_FR());
@@ -334,7 +361,7 @@ int convert_cm_to_ticks(int cm) {
   //Distance traveled = (ticks ÷ (CPR × gear ratio)) × circumference of wheel //CPR in this case is 48. diameter 6cm
   //562.25/(6*pi) = 29.828
   //double singleCM = 28.5;
-  double singleCM = 29.7; 
+  double singleCM = 29.8;  //28.5
   return cm * singleCM;
 }
 
