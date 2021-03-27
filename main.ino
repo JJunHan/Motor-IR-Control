@@ -1,147 +1,125 @@
 #include "motor_controller.h"
 #include "SharpIR.h"
 
-bool flag = true;
-int counter = 0;
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
   bootup_motor(); 
   on_PID();
 }
-char rx = 0;
 
+String rx = "";
+char holder[256];
+char inputarray[256]; //max 64
+char *tokenizer;
+int speedtosend;
+bool speed = false;
+bool hug = true;
 void loop() {
-  //Serial.println("hello rpi");
-  //delay(200);
-  // put your main code here, to run repeatedly:
-
-  Serial.print(get_MF());
-  Serial.print(":");
-  Serial.print(get_FL());
-  Serial.print(":");
-  Serial.println(get_FR());
-  delay(200);
-
-  
-  //Serial.println(get_FR());
-  //delay(200);
-  //Serial.print("Front left");
-  //Serial.println(get_FL());
-  
-  //Serial.print("Front middle");
-  //Serial.println(get_MF());
-  
-  //Serial.println(get_LF());
-  //Serial.println(get_LB());
-  //Serial.println(get_RF());
-  
-  if(Serial.available() > 0){ //check for input
-    rx = Serial.read();
+  if(hug){
+    left_hug();
+    left_reverse();
   }
-  switch (rx){
 
-    case 'f': //print all ir sensor result once.
-    get_all_IR();
-    break;
-    
-    case 'w':
-    move_front_back(110,true,true); //distance, front, fast
-    break;
-    
-    case 'z':
-    move_front_back(30,true,true); //100cm test
-    break;
-    
-    case 's':
-    move_front_back(50,false,true); //distance, back, slow
-    break;
+  //Serial.print(get_LF());
+  //Serial.print("   BACK: ");
+  //Serial.println(get_LB());
+  //get_all_IR();
+  //delay(200);
+  if(Serial.available() > 0){ //check for input
+    rx = Serial.readString(); //read it as a string
+    rx.toCharArray(inputarray,256); 
+    tokenizer = strtok(inputarray, "#");//use # as delimiter, return null when nothing else to read.
+  }
 
-    case 'd':
-    rotate_right_left(5, true,true); //90, right, fast
-    break;
 
-    case 'e':
-    rotate_right_left(11, true, true); //180, right, slow 
-    break;
-    
-    case 'a':
-    rotate_right_left(5, false,true); //90, left, fast
-    break;
-    
-    case 'q':
-    rotate_right_left(11, false,true); //180, left, slow
-    break;
+  if(strcmp(tokenizer,"f")== 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter 
+    move_front_back(10,true,speed); //front
+    delay(50);
+    get_all_IR(); 
+  }
+  
+  else if(strcmp(tokenizer,"STOPHUG") == 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
+    hug = false;
+    delay(50);
+  }
 
-    case 'v':
+  else if(strstr(tokenizer,"f") != NULL){ //if contains "f"
+    strncpy(holder,tokenizer+1,sizeof(holder)); //copy only the integer
+    sscanf(holder,"%d",&speedtosend);
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
+    move_front_back(speedtosend,true,speed); //front
+    delay(50);
+  }
+
+  else if(strcmp(tokenizer,"r")== 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
+    rotate_right_left(5, true,speed); //90, right, fast
+    delay(50);
+    get_all_IR(); 
+  }
+
+  else if(strcmp(tokenizer,"v")== 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
+    move_front_back(10, false, speed);  //back
+    delay(50);
+    get_all_IR(); 
+  }
+
+  else if(strcmp(tokenizer,"l")== 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
+    rotate_right_left(5, false,speed); //90, left, fast
+    delay(50);
+    get_all_IR(); 
+  }
+
+  else if(strcmp(tokenizer,"A")== 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
     cali_left(); //calibrate left
-    break;
+    delay(50);
+    get_all_IR(); 
+  }
 
-    case 'b':
+  else if(strcmp(tokenizer,"FRONTCALIBRATE")== 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
     cali_front(); //calibrate front
-    break;
+    delay(50);
+    get_all_IR(); 
+  }
+  
+  else if(strcmp(tokenizer,"INITIALCALIBRATE")== 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
+    //start_cali(); //start cali to send sensor readings
+    //delay(50);
+    //get_all_IR(); 
+  }
 
-    case 'c':
-    start_cali();
-    break;
-
-    case '1': //15
-    rotate_right_left(0, true,true); //0-11
-    break;
-
-    case '2': //30
-    rotate_right_left(1, true,true); //0-11
-    break;
-
-    case '3': //45
-    rotate_right_left(2, true,true); //0-11
-    break;
-
-    case '4': //60
-    rotate_right_left(3, true,true); //0-11
-    break;
-    
-    case '5': //75
-    rotate_right_left(4, true,true); //0-11
-    break;
-
-    case '6': //90
-    rotate_right_left(5, true,true); //0-11
-    break;
-
-    case '7': //105
-    rotate_right_left(6, true,true); //0-11
-    break;
-
-    case '8': //120
-    rotate_right_left(7, true,true); //0-11
-    break;
-    case '9': //135
-    rotate_right_left(8, true,true); //0-11
-    break;
-
-    case '0': //150
-    rotate_right_left(9, true,true); //0-11
-    break;
-    
-    case 'p': //165
-    rotate_right_left(10, true,true); //0-11
-    break;
-
-    case 'o': //180
-    rotate_right_left(11, true,true); //0-11
-    break;
-
-    case 'i': //360
-    rotate_right_left(12, true,true); //0-11
-    break;
-
-    case 'u': //360
-    rotate_right_left(13, true,true); //0-11
-    break;
-
-    case 'y': //1080
-    rotate_right_left(14, true,true); //0-11
-    break;
-  }    
-}
+  else if(strcmp(tokenizer,"SIDECALIBRATE")== 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
+    cali_left(); //calibrate left
+    delay(50);
+    get_all_IR(); 
+  }
+  
+  else if(strcmp(tokenizer,"BFOk")== 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
+    speed = true; 
+    delay(50);
+    get_all_IR(); 
+  }
+  
+  else if(strcmp(tokenizer,"BEOk")== 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
+    speed = false; 
+    delay(50);
+    get_all_IR(); 
+  }
+  
+  else if(strcmp(tokenizer,"w")== 0){
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
+    move_front_back(60,true,speed); //distance, front, fast
+  }
+} //end loop

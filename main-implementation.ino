@@ -10,16 +10,22 @@ void setup() {
 }
 
 String rx = "";
-char inputarray[64]; //max 64
+char holder[128];
+char inputarray[128]; //max 64
 char *tokenizer;
+int speedtosend;
 bool speed = false;
 void loop() {
   //Serial.println("hello rpi");
   //delay(200);
   // put your main code here, to run repeatedly:
+  left_hug();
+  get_LF();
+  get_LB();
+  delay(200);
   if(Serial.available() > 0){ //check for input
     rx = Serial.readString(); //read it as a string
-    rx.toCharArray(inputarray,64); 
+    rx.toCharArray(inputarray,128); 
     tokenizer = strtok(inputarray, "#");//use # as delimiter, return null when nothing else to read.
   }
 
@@ -28,6 +34,14 @@ void loop() {
     move_front_back(10,true,speed); //front
     delay(50);
     get_all_IR(); 
+  }
+
+  else if(strstr(tokenizer,"f") != NULL){ //if contains "f"
+    strncpy(holder,tokenizer+1,sizeof(holder)); //copy only the integer
+    sscanf(holder,"%d",&speedtosend);
+    tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
+    move_front_back(speedtosend,true,speed); //front
+    delay(50);
   }
 
   else if(strcmp(tokenizer,"r")== 0){
@@ -95,6 +109,6 @@ void loop() {
   
   else if(strcmp(tokenizer,"w")== 0){
     tokenizer = strtok(NULL,"#"); //reads next input sorted by delimiter
-    move_front_back(130,true,speed); //distance, front, fast
+    move_front_back(60,true,speed); //distance, front, fast
   }
 } //end loop

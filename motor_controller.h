@@ -29,4 +29,6 @@ int get_RF();
 void get_all_IR();
 void avoid_obs();
 void avoid_obs45();
+void left_hug();
+void left_reverse();
 #endif //end

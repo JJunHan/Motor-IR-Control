@@ -43,16 +43,27 @@ float SharpIR::getDistance( bool avoidBurstRead )
 				case A1: //middle front sensor
           distance = 7992.86/(raw_data+29.78) -12;
           return distance;
+          
 					break;
 
 				case A2: //Left side left front sensor
+        if(raw_data > 585) { //3,2,1 cm
+          distance = -0.0938*raw_data+59.344; 
+        }
+        else{
           distance = 8216.3/(raw_data+51.71) -11;
+        }
           return distance;
 					break;
 
 				case A3: //Left side left back sensor
-        
-          distance = 7665.63/(raw_data+26.11) -11;
+          //if(raw_data > 585) { //3,2,1 cm
+          //  distance = -0.0938*raw_data+59.344;
+          //}
+          //else{
+            distance = 7665.63/(raw_data+26.11) -11; //665.63/(raw_data+26.11) -11
+          //}
+          
           return distance;
 					break;
 				
